@@ -3,7 +3,8 @@
 #
 # Gladys sandbox constraints ("the sandbox is the defense"):
 #   - rootfs mounted READ-ONLY -> never write outside /data
-#   - a single writable volume: /data
+#   - a single writable volume: /data (the request count of the day, the
+#     pauses of the key, the instant each trip was last read)
 #   - runs as a non-root user
 #   - multi-arch image (linux/amd64 + linux/arm64), see the CI workflow
 # -----------------------------------------------------------------------------
@@ -19,10 +20,10 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev || npm install --omit=dev
 
-# Then the integration code.
+# Then the integration code and its license.
 COPY index.js ./
 COPY src ./src
-COPY gladys-assistant-integration.json ./
+COPY gladys-assistant-integration.json LICENSE ./
 
 # The only writable location allowed at runtime. Docker creates a new volume
 # with the owner of the image's /data, so it must belong to `node`, and before

@@ -32,12 +32,13 @@ pushing.
 
 ```
 index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
-src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
-src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
+src/app.js                        trips, due times, devices, status, test button, scene action
+src/tomtom.js                     TomTom client: request, answers, pace, quota, pauses
+src/store.js                      what survives a restart (/data/tomtom-state.json)
+src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults), trips, planned requests
+src/devices.js                    the Gladys device of a trip and its states
+src/http.js                       bounded fetch; its errors keep the host only, never the key
+src/i18n.js                       status and button texts, en and fr
 gladys-assistant-integration.json manifest: name, config_schema, actions, image...
 docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
 test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
@@ -54,6 +55,12 @@ test/                             node --test, against the SDK's fake Gladys (in
   manifest `config_schema`, `actions`, widget and scene keys, feature keys.
 - **The container rootfs is read-only.** Write only under `/data`, the one
   writable volume. Never log tokens, passwords or API keys.
+- **The TomTom key and quota.** Every request goes through
+  `TomTomClient.route()` (pace, daily count, pauses, refusal, all persisted in
+  `/data`); never call `fetch` elsewhere. The key travels in the query string:
+  an error message never carries more than the host (`src/http.js`), and
+  `app.scrub()` is the last net before a log. A trip is never read again
+  faster than its interval, even after an error or a restart.
 - **Versions belong to the Release workflow** (Actions → Release). Never edit
   `version` in `package.json` or in the manifest, nor the `docker_image` tag,
   by hand — except on the README's hand-pushed tag path, which bumps all three

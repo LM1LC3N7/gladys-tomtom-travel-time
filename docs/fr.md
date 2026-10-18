@@ -1,67 +1,157 @@
-# Template de démonstration
+# TomTom Travel Time
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Connecteur non officiel, sans lien avec TomTom. Pour chaque trajet que vous
+saisissez, Gladys reçoit la durée avec le trafic en temps réel, le retard dû
+au trafic, la distance et la durée sans trafic, lus par l'API officielle
+**TomTom Routing** (Calculate Route) avec une clé gratuite.
 
-## Ce que vous obtenez
+> Cette intégration n'a **jamais été testée avec une vraie clé TomTom** : elle
+> suit la documentation officielle de TomTom et ses tests simulent les
+> réponses de l'API. Vos retours sont les bienvenus.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+Elle remplace l'idée d'une intégration Waze : l'API de Waze n'est accessible
+qu'en contournant sa protection anti-robots. Une intégration **Mapbox Traffic**
+de qleg existe déjà et fait la même chose avec Mapbox (fil n° 11024 du forum :
+https://community.gladysassistant.com/t/11024) : choisissez celle dont le
+fournisseur vous convient.
 
-## Configuration
+L'ergonomie (un trajet avec un nom, une origine et une destination, relevé
+périodiquement) s'inspire de l'intégration « Waze Travel Time » de Home
+Assistant (Apache-2.0). Aucun code n'en est repris.
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+## Créer la clé gratuite
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+1. Créez un compte sur https://developer.tomtom.com/user/register (aucune
+   carte bancaire demandée) et confirmez l'adresse e-mail.
+2. Connectez-vous à https://developer.tomtom.com, ouvrez votre tableau de bord,
+   puis **Keys** (Clés).
+3. Une première clé est créée avec le compte et donne accès aux API, Routing
+   comprise. Copiez-la (ou créez-en une nouvelle et cochez **Routing API**).
+4. Collez-la dans le champ **Clé d'API TomTom** de l'intégration.
 
-## Actions
+L'offre gratuite permet **2 500 requêtes par jour**. La clé est gardée par
+Gladys dans sa base, jamais réaffichée, et envoyée seulement à
+`api.tomtom.com`. Elle n'apparaît ni dans les journaux, ni dans les messages,
+ni dans les statuts.
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+## Saisir les trajets
 
-## Scènes
+Champ **Trajets** : un trajet par entrée, séparés par `;`. Chaque trajet est
+un nom, l'origine et la destination en `latitude,longitude` (point décimal),
+séparés par `|` :
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+```
+Travail | 48.85661,2.35222 | 48.89198,2.23881; École | 48.80000,2.30000 | 48.81000,2.31000
+```
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+- Pour trouver des coordonnées : clic droit sur un point dans Google Maps ou
+  OpenStreetMap, puis copier les deux nombres.
+- Vingt trajets au maximum ; deux trajets ne peuvent pas avoir le même nom.
+- Un trajet invalide est ignoré et nommé dans le statut (jamais ses
+  coordonnées).
+- Le nom identifie l'appareil : renommer un trajet crée un nouvel appareil
+  (l'ancien garde son historique). Changer ses coordonnées garde l'appareil.
+- Les adresses ne sont pas prises en charge pour l'instant (pas d'appel à
+  l'API Search de TomTom) : donnez des coordonnées.
 
-## Tableau de bord
+Options communes à tous les trajets :
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+- **Véhicule** : voiture, ou camion (routes et vitesses d'un camion, sans ses
+  dimensions ni son poids).
+- **Éviter les péages**, **Éviter les autoroutes**.
+- Le départ est toujours **maintenant**, avec le trafic en temps réel.
+
+## Les appareils
+
+Après l'enregistrement, chaque trajet apparaît dans l'onglet **Découverte**.
+Ajoutez-le pour obtenir :
+
+| Fonction            | Catégorie Gladys  | Unité   |
+| ------------------- | ----------------- | ------- |
+| Durée avec trafic   | `duration`        | minutes |
+| Retard dû au trafic | `duration`        | minutes |
+| Distance            | `distance-sensor` | km      |
+| Durée sans trafic   | `duration`        | minutes |
+
+Les valeurs sont arrondies au dixième. La durée sans trafic est celle que
+TomTom calcule sans aucun trafic (`noTrafficTravelTimeInSeconds`).
+
+## Le quota et la fréquence
+
+Chaque relevé d'un trajet coûte une requête. **Requêtes par jour = trajets ×
+(minutes de la plage de relevé ÷ intervalle)**.
+
+| Intervalle      | Requêtes par trajet et par jour (toute la journée) | Trajets possibles |
+| --------------- | -------------------------------------------------- | ----------------- |
+| 5 min (minimum) | 288                                                | 8                 |
+| 10 min (défaut) | 144                                                | 17                |
+| 15 min          | 96                                                 | 20                |
+
+- Le statut de l'intégration affiche le nombre de requêtes par jour prévu
+  après chaque enregistrement.
+- Une configuration qui prévoit **plus de 2 500 requêtes par jour est
+  refusée** : rien n'est lu et le statut dit quoi changer.
+- L'intégration compte elle-même ses requêtes par jour UTC et n'en envoie
+  jamais plus de 2 500, relevés de scène et bouton de test compris. Le compte
+  survit à un redémarrage (fichier dans `/data`).
+- Un trajet n'est jamais relu plus vite que l'intervalle, même après une
+  erreur ou un redémarrage.
+- Une réponse 429 de TomTom suspend toutes les requêtes (Retry-After, sinon
+  1 minute doublée à chaque fois, entre 1 minute et 6 heures). Un 403 pour le
+  quota du jour les suspend jusqu'au prochain minuit UTC (au moins 1 heure).
+  Une clé refusée arrête les relevés, avec un nouvel essai toutes les
+  6 heures jusqu'à ce que la clé change. Ces pauses survivent à un
+  redémarrage.
+
+## Plage de relevé (facultatif)
+
+Pour économiser le quota, relevez les trajets seulement entre deux heures,
+par exemple de 6 h à 20 h (14 heures : 84 requêtes par trajet à 10 minutes).
+De 0 à 24 relève toute la journée ; une plage peut passer minuit (de 22 à 6).
+Les heures sont celles du **fuseau horaire** indiqué (celui de votre Gladys,
+`Europe/Paris` par défaut). Hors de la plage, les dernières valeurs restent
+affichées et ne sont plus renvoyées.
+
+## Scène : rafraîchir un trajet maintenant
+
+L'action de scène **Rafraîchir un trajet TomTom maintenant** relève le trajet
+choisi tout de suite, sauf s'il l'a été il y a moins de **2 minutes** (une
+scène en boucle ne peut pas épuiser le quota) : elle rend alors ses dernières
+valeurs. Elle fonctionne aussi hors de la plage de relevé. Sorties, utilisables
+par les actions suivantes : `refreshed` (relevé maintenant ou non),
+`travel_time_minutes`, `traffic_delay_minutes`, `distance_km`,
+`no_traffic_time_minutes`. Le relevé suivant vient un intervalle entier plus
+tard.
+
+Exemple : chaque matin de semaine à 7 h 30, rafraîchir « Travail », puis
+envoyer un message si `traffic_delay_minutes` dépasse 10.
+
+## Bouton « Tester TomTom »
+
+Relève le premier trajet (une requête, au plus une fois toutes les
+2 minutes), puis affiche le nombre de requêtes prévu, celles utilisées
+aujourd'hui, et les dernières valeurs de chaque trajet.
+
+## Confidentialité
+
+Les coordonnées de vos trajets (souvent votre domicile) et la clé sont
+envoyées à TomTom (`api.tomtom.com`) à chaque relevé, et à personne d'autre.
+Le fichier `/data/tomtom-state.json` garde le compte du jour, les pauses, une
+empreinte de la clé (jamais la clé) et l'heure du dernier relevé de chaque
+trajet.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- **« TomTom a refusé la clé »** : vérifiez la clé sur developer.tomtom.com
+  et qu'elle a accès à la Routing API.
+- **« aucun itinéraire entre les points »** : un point est loin de toute
+  route, ou les points ne sont pas reliés par la route ; réessayé toutes les
+  heures au plus.
+- **Configuration refusée** : augmentez l'intervalle, réduisez la plage
+  horaire ou retirez des trajets.
+- Journaux de l'intégration : depuis l'interface de Gladys.
+
+## Licence
+
+Apache-2.0. TomTom est une marque de TomTom N.V. ; ce connecteur n'est ni
+affilié ni approuvé par TomTom.
