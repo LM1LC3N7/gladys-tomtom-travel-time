@@ -3,8 +3,9 @@
 Unofficial [Gladys Assistant](https://gladysassistant.com) external
 integration: the travel time of your trips with live traffic, the traffic
 delay, the distance and the travel time without traffic, through the official
-[TomTom Routing API](https://developer.tomtom.com/routing-api/documentation/tomtom-maps/calculate-route)
-(Calculate Route) and a free API key (2,500 requests a day).
+[TomTom Routing API](https://docs.tomtom.com/routing-api/documentation/tomtom-maps/calculate-route)
+(Calculate Route) and a free API key (2,500 requests a day, shared by every
+use of the key; create it on [my.tomtom.com](https://my.tomtom.com/keys)).
 
 Not affiliated with TomTom. **Never tested with a real TomTom key yet.**
 
@@ -16,7 +17,8 @@ Not affiliated with TomTom. **Never tested with a real TomTom key yet.**
   (e.g. 6 to 20) saves the quota. The status shows the requests a day the
   configuration plans; a configuration over 2,500 is refused.
 - Scene action "Refresh a TomTom trip now", at most once every 2 minutes per
-  trip.
+  trip and 100 manual reads a UTC day (fewer when the planned reads leave
+  less of the 2,500).
 - The count of the day, the pauses (429, 403 for the quota, refused key) and
   the last read of each trip survive a restart (`/data`): never more than
   2,500 requests a UTC day, never a trip read faster than its interval.

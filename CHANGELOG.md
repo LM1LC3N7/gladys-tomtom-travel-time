@@ -29,7 +29,11 @@ the notes of the version's GitHub Release.
   hours). The count, the pauses and the last read of each trip are kept under
   `/data` with a hash of the key, never the key.
 - Scene action "Refresh a TomTom trip now", at most once every 2 minutes per
-  trip, with the values as outputs.
+  trip and 100 manual reads a UTC day (fewer when the planned reads leave
+  less of the 2,500), with the values and their age as outputs; simultaneous
+  calls send one request only.
+- A warning in the status when `/data` cannot be written; the first reads
+  then wait a whole interval after each start.
 - "Test TomTom" button: one request, the planned and used requests, the last
   values of every trip.
 

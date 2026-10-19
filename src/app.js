@@ -9,6 +9,7 @@ import { inWindow, normalizeConfig } from './config.js';
 import {
   DAILY_LIMIT,
   HEARTBEAT,
+  MANUAL_DAILY_MAX,
   MANUAL_MIN_GAP,
   MAX_TRIPS,
   STALE,
@@ -57,10 +58,19 @@ export class TravelTimeApp {
     this.lastStatus = undefined;
     this.generation = 0;
     this.started = false;
+    this.bootAt = now();
   }
 
   get intervalMs() {
     return this.config.intervalMinutes * 60_000;
+  }
+
+  /**
+   * The manual reads (scenes, test button) allowed per UTC day: 100, and
+   * never more than what the planned reads leave of the 2,500.
+   */
+  get manualLimit() {
+    return Math.max(0, Math.min(MANUAL_DAILY_MAX, DAILY_LIMIT - this.config.planned));
   }
 
   // --- Lifecycle -------------------------------------------------------------
@@ -79,7 +89,6 @@ export class TravelTimeApp {
     if (config.apiKey) {
       this.client.useKey(config.apiKey);
     }
-    const now = this.now();
     const ids = new Set(config.trips.map((t) => t.id));
     for (const id of this.track.keys()) {
       if (!ids.has(id)) {
@@ -96,9 +105,14 @@ export class TravelTimeApp {
         entry.nextDue = Math.max(entry.nextDue, this.retryAt(trip, entry.error));
       }
       if (newKey && entry.error && KEY_KINDS.includes(entry.error.kind)) {
-        // A new key may read again, but never twice within the manual gap.
-        entry.nextDue = Math.min(entry.nextDue, Math.max(now, last + MANUAL_MIN_GAP));
+        // A new key reads again at the usual time (the test button may try
+        // it sooner, once the manual gap is over).
         entry.error = undefined;
+      }
+      if (!this.client.store.writable) {
+        // /data cannot keep the instants: a container restarting in a loop
+        // must not read at each start. One whole interval after the start.
+        entry.nextDue = Math.max(entry.nextDue, this.bootAt + this.intervalMs);
       }
       this.track.set(trip.id, entry);
     }
@@ -220,6 +234,8 @@ export class TravelTimeApp {
         apiKey: this.config.apiKey,
         manual,
         force,
+        minGap: manual ? MANUAL_MIN_GAP : this.intervalMs,
+        manualLimit: this.manualLimit,
       });
       if (generation !== this.generation || !entry) {
         return false;
@@ -241,6 +257,16 @@ export class TravelTimeApp {
       return true;
     } catch (err) {
       if (generation !== this.generation || !entry) {
+        return false;
+      }
+      if (err?.kind === 'too_soon' || err?.kind === 'manual_budget') {
+        // Nothing was sent: the trip keeps its values, and a periodic read
+        // waits for the interval after the request made meanwhile.
+        const last = this.client.store.trip(trip.id).lastAttemptAt;
+        entry.nextDue = Math.max(entry.nextDue, last + this.intervalMs);
+        if (err.kind === 'manual_budget') {
+          this.logger.warn(`Manual read of ${trip.name} refused: ${err.message}`);
+        }
         return false;
       }
       entry.error = err instanceof TomTomError ? err : new TomTomError('failed', 'network');
@@ -397,6 +423,9 @@ export class TravelTimeApp {
     if (config.invalidTimezone) {
       notes.push(T.invalidTimezone(config.timezone));
     }
+    if (!this.client.store.writable) {
+      notes.push(T.notWritable);
+    }
     if (notes.length === 0) {
       return text;
     }
@@ -441,8 +470,10 @@ export class TravelTimeApp {
   }
 
   /**
-   * Read a trip now, unless it was read less than MANUAL_MIN_GAP ago (then
-   * its last values). Resolves the outputs of the scene action.
+   * Read a trip now, unless it was read less than MANUAL_MIN_GAP ago or the
+   * manual reads of the day are spent (then its last values). The checks run
+   * in the turn of the pacer: concurrent calls never stack requests.
+   * Resolves the outputs of the scene action.
    */
   async refreshTrip(fields) {
     const trip = this.tripOf(fields?.trip);
@@ -452,15 +483,13 @@ export class TravelTimeApp {
     if (!this.config.apiKey || this.config.overQuota) {
       throw new Error('TomTom is not configured, or its configuration is refused');
     }
-    const last = this.client.store.trip(trip.id).lastAttemptAt;
-    let refreshed = false;
-    if (this.now() - last >= MANUAL_MIN_GAP) {
-      refreshed = await this.read(trip, { manual: true });
-      await this.refreshStatus();
-    }
-    const reading = this.track.get(trip.id)?.reading;
+    const refreshed = await this.read(trip, { manual: true });
+    await this.refreshStatus();
+    const entry = this.track.get(trip.id);
+    const reading = entry?.reading;
     const outputs = { refreshed };
     if (reading) {
+      outputs.age_minutes = Math.max(0, Math.round((this.now() - entry.ts) / 60_000));
       const values = valuesOf(reading);
       for (const [key, output] of [
         ['travel_time', 'travel_time_minutes'],
@@ -548,11 +577,10 @@ export class TravelTimeApp {
     }
     const deadline = this.now() + TEST_DEADLINE;
     // One request checks the key (the first trip), never twice within the
-    // manual gap; the other trips show their last values.
+    // manual gap (checked in the turn of the pacer); the other trips show
+    // their last values.
     const [first] = config.trips;
-    if (this.now() - this.client.store.trip(first.id).lastAttemptAt >= MANUAL_MIN_GAP) {
-      await this.readBefore(first, deadline, { manual: true, force: true });
-    }
+    await this.readBefore(first, deadline, { manual: true, force: true });
     const en = [];
     const fr = [];
     const issue = this.keyIssue();
@@ -561,11 +589,13 @@ export class TravelTimeApp {
       fr.push(issue.text.fr);
     }
     const used = this.client.store.used();
+    const manual = this.client.store.manualUsed();
+    const limit = this.manualLimit;
     en.push(
-      `Trips, ${schedule(config, 'en')}: ${count(config.planned, 'en')} requests a day planned; ${count(used, 'en')}/${count(DAILY_LIMIT, 'en')} used today (UTC).`,
+      `Trips, ${schedule(config, 'en')}: ${count(config.planned, 'en')} requests a day planned; ${count(used, 'en')}/${count(DAILY_LIMIT, 'en')} used today (UTC), of which ${manual}/${limit} manual reads (scenes, this button).`,
     );
     fr.push(
-      `Trajets, ${schedule(config, 'fr')} : ${count(config.planned, 'fr')} requêtes par jour prévues ; ${count(used, 'fr')}/${count(DAILY_LIMIT, 'fr')} utilisées aujourd'hui (UTC).`,
+      `Trajets, ${schedule(config, 'fr')} : ${count(config.planned, 'fr')} requêtes par jour prévues ; ${count(used, 'fr')}/${count(DAILY_LIMIT, 'fr')} utilisées aujourd'hui (UTC), dont ${manual}/${limit} relevés manuels (scènes, ce bouton).`,
     );
     for (const trip of config.trips) {
       en.push(this.line(trip, 'en'));

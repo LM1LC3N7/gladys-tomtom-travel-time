@@ -79,8 +79,10 @@ export function fileStorage(path, { logger } = {}) {
         const tmp = `${path}.tmp`;
         writeFileSync(tmp, JSON.stringify(value));
         renameSync(tmp, path);
+        return true;
       } catch (err) {
         warnOnce('write', `State file not writable (${err.code ?? 'error'}): kept in memory`);
+        return false;
       }
     },
   };
@@ -112,10 +114,15 @@ export class Store {
     const count = own(data, 'count');
     this.day = typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : dayOf(at);
     this.count = Number.isInteger(count) && count >= 0 ? Math.min(count, dailyLimit) : 0;
+    const manual = own(data, 'manual');
+    this.manual = Number.isInteger(manual) && manual >= 0 ? Math.min(manual, dailyLimit) : 0;
     if (unreadable) {
       // Prudent: a file we cannot read may have held a busy day, a pause.
       this.count = Math.floor(dailyLimit / 2);
+      this.manual = Math.floor(dailyLimit / 2);
     }
+    /** False once a save failed: the state then lives in memory only. */
+    this.writable = true;
     // An instant in the future (a clock set back, a bad file) counts as now.
     this.lastCallAt = Math.min(instant(own(data, 'lastCallAt')), at);
 
@@ -156,7 +163,14 @@ export class Store {
     if (today !== this.day) {
       this.day = today;
       this.count = 0;
+      this.manual = 0;
     }
+  }
+
+  /** Manual requests (scenes, test button) made today (UTC). */
+  manualUsed() {
+    this.roll();
+    return this.manual;
   }
 
   /** Requests made today (UTC). */
@@ -197,6 +211,9 @@ export class Store {
         entry.lastManualAt = at;
       }
     }
+    if (manual) {
+      this.manual += 1;
+    }
     this.save();
   }
 
@@ -207,9 +224,10 @@ export class Store {
       const recent = [...this.trips].sort((a, b) => b[1].lastAttemptAt - a[1].lastAttemptAt);
       this.trips = new Map(recent.slice(0, 100));
     }
-    this.storage.save({
+    const saved = this.storage.save({
       day: this.day,
       count: this.count,
+      manual: this.manual,
       lastCallAt: this.lastCallAt,
       key: { ...this.key },
       trips: Object.fromEntries(
@@ -219,5 +237,6 @@ export class Store {
         ]),
       ),
     });
+    this.writable = saved !== false;
   }
 }

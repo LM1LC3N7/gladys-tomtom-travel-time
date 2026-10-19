@@ -68,6 +68,13 @@ test('the summary of the first route', () => {
     noTrafficTime: null,
   });
   assert.equal(checkAnswer({ status: 200, text: '{"routes":[]}' }).kind, 'failed');
+  // A route without a travel time is no answer.
+  const noTime = checkAnswer({
+    status: 200,
+    text: JSON.stringify({ routes: [{ summary: { lengthInMeters: 100 } }] }),
+  });
+  assert.equal(noTime.kind, 'failed');
+  assert.equal(noTime.detail, 'unexpected answer');
   assert.equal(checkAnswer({ status: 200, text: '<html>' }).kind, 'failed');
 });
 
@@ -75,7 +82,11 @@ test('the errors: key refused, quota, rate, no route, passing failures', () => {
   const kind = (status, text) => checkAnswer({ status, text }).kind;
   assert.equal(kind(403, '<h1>Developer Inactive</h1>'), 'refused');
   assert.equal(kind(403, '<h1>Not Authorized</h1>'), 'refused');
-  assert.equal(kind(403, ''), 'refused');
+  assert.equal(kind(403, '<h1>Forbidden</h1>'), 'refused');
+  assert.equal(kind(403, 'Invalid key'), 'refused');
+  // A 403 TomTom does not explain (a proxy, a CDN): a pause, not a refusal.
+  assert.equal(kind(403, ''), 'limited');
+  assert.equal(kind(403, '<html>Access denied by the edge</html>'), 'limited');
   assert.equal(kind(401, ''), 'refused');
   assert.equal(kind(403, '<h1>Developer Over Rate</h1>'), 'quota');
   assert.equal(kind(403, 'Over the limit'), 'quota');
@@ -269,4 +280,51 @@ test('TomTomError messages hold only fixed texts', () => {
     'TomTom no_route (NO_ROUTE_FOUND)',
   );
   assert.ok(detailed('BAD_INPUT', 'x') instanceof Response);
+});
+
+test('concurrent callers: the gap is checked in the turn, one request only', async () => {
+  fake = installFetch([[ROUTE, () => json(fixture('route.json'))]]);
+  const { c } = client();
+  const results = await Promise.allSettled(
+    Array.from({ length: 6 }, () =>
+      c.route(TRIP, CAR, { apiKey: KEY, manual: true, minGap: 120_000 }),
+    ),
+  );
+  assert.equal(fake.calls.length, 1);
+  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
+  assert.ok(
+    results.filter((r) => r.status === 'rejected').every((r) => r.reason.kind === 'too_soon'),
+  );
+});
+
+test('the manual reads of the day are capped, the count persisted', async () => {
+  fake = installFetch([[ROUTE, () => json(fixture('route.json'))]]);
+  const storage = memoryStorage();
+  const { c, clock } = client({ storage });
+  await c.route(TRIP, CAR, { apiKey: KEY, manual: true, manualLimit: 2 });
+  await c.route(TRIP, CAR, { apiKey: KEY, manual: true, manualLimit: 2 });
+  await assert.rejects(c.route(TRIP, CAR, { apiKey: KEY, manual: true, manualLimit: 2 }), {
+    kind: 'manual_budget',
+  });
+  // Periodic reads are not held by it.
+  await c.route(TRIP, CAR, { apiKey: KEY });
+  assert.equal(fake.calls.length, 3);
+  const again = client({ storage, now: clock.now });
+  assert.equal(again.c.store.manualUsed(), 2);
+  await assert.rejects(again.c.route(TRIP, CAR, { apiKey: KEY, manual: true, manualLimit: 2 }), {
+    kind: 'manual_budget',
+  });
+  again.clock.now = nextUtcMidnight(again.clock.now);
+  assert.equal(again.c.store.manualUsed(), 0);
+});
+
+test('a state file that cannot be written is reported', () => {
+  const store = new Store({
+    storage: { load: () => undefined, save: () => false },
+    now: () => NOW,
+    dailyLimit: DAILY_LIMIT,
+  });
+  assert.equal(store.writable, true);
+  store.save();
+  assert.equal(store.writable, false);
 });

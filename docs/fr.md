@@ -21,15 +21,22 @@ Assistant (Apache-2.0). Aucun code n'en est repris.
 
 ## Créer la clé gratuite
 
-1. Créez un compte sur https://developer.tomtom.com/user/register (aucune
-   carte bancaire demandée) et confirmez l'adresse e-mail.
-2. Connectez-vous à https://developer.tomtom.com, ouvrez votre tableau de bord,
-   puis **Keys** (Clés).
-3. Une première clé est créée avec le compte et donne accès aux API, Routing
-   comprise. Copiez-la (ou créez-en une nouvelle et cochez **Routing API**).
+1. Créez un compte sur https://my.tomtom.com/ (aucune carte bancaire
+   demandée) et confirmez l'adresse e-mail.
+2. Ouvrez https://my.tomtom.com/keys : une clé nommée **My first API key**
+   est créée d'office avec le compte et donne accès aux API, Routing comprise.
+3. Copiez-la (ou créez-en une nouvelle avec l'accès à la Routing API).
 4. Collez-la dans le champ **Clé d'API TomTom** de l'intégration.
 
-L'offre gratuite permet **2 500 requêtes par jour**. La clé est gardée par
+L'offre gratuite permet **2 500 requêtes par jour**, **partagées par tous les
+usages de la même clé** : si vous l'utilisez aussi ailleurs (un site, une
+autre application), ces requêtes comptent aussi, et l'intégration ne les voit
+pas. Utilisez de préférence une clé dédiée. Si votre compte est passé à
+l'offre payante « Pay As You Grow », les requêtes au-delà des 2 500 gratuites
+peuvent être facturées : l'intégration s'arrête d'elle-même à 2 500 par jour,
+mais pas les autres usages de la clé.
+
+La clé est gardée par
 Gladys dans sa base, jamais réaffichée, et envoyée seulement à
 `api.tomtom.com`. Elle n'apparaît ni dans les journaux, ni dans les messages,
 ni dans les statuts.
@@ -47,8 +54,10 @@ Travail | 48.85661,2.35222 | 48.89198,2.23881; École | 48.80000,2.30000 | 48.81
 - Pour trouver des coordonnées : clic droit sur un point dans Google Maps ou
   OpenStreetMap, puis copier les deux nombres.
 - Vingt trajets au maximum ; deux trajets ne peuvent pas avoir le même nom.
-- Un trajet invalide est ignoré et nommé dans le statut (jamais ses
-  coordonnées).
+- Un trajet invalide est ignoré et nommé dans le statut, jamais avec ses
+  coordonnées : les nombres du nom sont masqués, et une entrée sans nom
+  utilisable apparaît par sa position (`#2`). Le nom doit contenir au moins
+  une lettre latine ou un chiffre et ne pas être lui-même des coordonnées.
 - Le nom identifie l'appareil : renommer un trajet crée un nouvel appareil
   (l'ancien garde son historique). Changer ses coordonnées garde l'appareil.
 - Les adresses ne sont pas prises en charge pour l'instant (pas d'appel à
@@ -94,8 +103,15 @@ Chaque relevé d'un trajet coûte une requête. **Requêtes par jour = trajets �
 - L'intégration compte elle-même ses requêtes par jour UTC et n'en envoie
   jamais plus de 2 500, relevés de scène et bouton de test compris. Le compte
   survit à un redémarrage (fichier dans `/data`).
-- Un trajet n'est jamais relu plus vite que l'intervalle, même après une
-  erreur ou un redémarrage.
+- Les relevés manuels (scènes et bouton de test) ont leur propre plafond par
+  jour UTC : 100, et jamais plus que ce que les relevés prévus laissent des
+  2 500 (par exemple 2 500 − 2 448 = 52). Au-delà, l'action de scène rend les
+  dernières valeurs sans requête.
+- Un trajet n'est jamais relu plus vite que l'intervalle par les relevés
+  périodiques, même après une erreur, une reconnexion ou un redémarrage ; un
+  relevé manuel au plus toutes les 2 minutes par trajet.
+- Si le dossier `/data` n'est pas inscriptible, le statut le signale et les
+  premiers relevés attendent un intervalle entier après chaque démarrage.
 - Une réponse 429 de TomTom suspend toutes les requêtes (Retry-After, sinon
   1 minute doublée à chaque fois, entre 1 minute et 6 heures). Un 403 pour le
   quota du jour les suspend jusqu'au prochain minuit UTC (au moins 1 heure).
@@ -115,22 +131,25 @@ affichées et ne sont plus renvoyées.
 ## Scène : rafraîchir un trajet maintenant
 
 L'action de scène **Rafraîchir un trajet TomTom maintenant** relève le trajet
-choisi tout de suite, sauf s'il l'a été il y a moins de **2 minutes** (une
-scène en boucle ne peut pas épuiser le quota) : elle rend alors ses dernières
-valeurs. Elle fonctionne aussi hors de la plage de relevé. Sorties, utilisables
-par les actions suivantes : `refreshed` (relevé maintenant ou non),
-`travel_time_minutes`, `traffic_delay_minutes`, `distance_km`,
-`no_traffic_time_minutes`. Le relevé suivant vient un intervalle entier plus
-tard.
+choisi tout de suite, sauf s'il l'a été il y a moins de **2 minutes**, ou si
+les relevés manuels du jour sont épuisés (voir plus haut) : elle rend alors ses
+dernières valeurs sans requête. Plusieurs appels simultanés n'envoient qu'une
+requête. Une scène en boucle consomme donc au plus les relevés manuels du jour,
+jamais les relevés périodiques. Elle fonctionne aussi hors de la plage de
+relevé. Sorties, utilisables par les actions suivantes : `refreshed` (relevé
+maintenant ou non), `age_minutes` (âge des valeurs), `travel_time_minutes`,
+`traffic_delay_minutes`, `distance_km`, `no_traffic_time_minutes`. Le relevé
+périodique suivant vient un intervalle entier plus tard.
 
 Exemple : chaque matin de semaine à 7 h 30, rafraîchir « Travail », puis
 envoyer un message si `traffic_delay_minutes` dépasse 10.
 
 ## Bouton « Tester TomTom »
 
-Relève le premier trajet (une requête, au plus une fois toutes les
+Relève le premier trajet (un relevé manuel, au plus une fois toutes les
 2 minutes), puis affiche le nombre de requêtes prévu, celles utilisées
-aujourd'hui, et les dernières valeurs de chaque trajet.
+aujourd'hui (dont les relevés manuels), et les dernières valeurs de chaque
+trajet.
 
 ## Confidentialité
 
@@ -142,8 +161,10 @@ trajet.
 
 ## Dépannage
 
-- **« TomTom a refusé la clé »** : vérifiez la clé sur developer.tomtom.com
-  et qu'elle a accès à la Routing API.
+- **« TomTom a refusé la clé »** : vérifiez la clé sur https://my.tomtom.com/keys
+  et qu'elle a accès à la Routing API. Un 403 que TomTom n'explique pas
+  (proxy, CDN) n'est pas pris pour un refus : une pause qui double à chaque
+  fois.
 - **« aucun itinéraire entre les points »** : un point est loin de toute
   route, ou les points ne sont pas reliés par la route ; réessayé toutes les
   heures au plus.

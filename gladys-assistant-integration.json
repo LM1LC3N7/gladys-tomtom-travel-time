@@ -16,33 +16,52 @@
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "TomTom travel time in Gladys", "fr": "Temps de trajet TomTom dans Gladys" },
+      "label": {
+        "en": "TomTom travel time in Gladys",
+        "fr": "Temps de trajet TomTom dans Gladys"
+      },
       "description": {
-        "en": "Unofficial connector, not affiliated with TomTom. For each trip you enter, a device gives the travel time with live traffic, the traffic delay, the distance and the travel time without traffic, read through the official TomTom Routing API. Create a free API key on developer.tomtom.com (2,500 requests a day). Each trip costs one request per read: 10 minutes by default, 5 at least. Never tested with a real TomTom key yet.",
-        "fr": "Connecteur non officiel, sans lien avec TomTom. Pour chaque trajet saisi, un appareil donne la durée avec le trafic en temps réel, le retard dû au trafic, la distance et la durée sans trafic, lus par l'API officielle TomTom Routing. Créez une clé d'API gratuite sur developer.tomtom.com (2 500 requêtes par jour). Chaque trajet coûte une requête par relevé : toutes les 10 minutes par défaut, 5 au minimum. Jamais testé avec une vraie clé TomTom pour l'instant."
+        "en": "Unofficial connector, not affiliated with TomTom. For each trip you enter, a device gives the travel time with live traffic, the traffic delay, the distance and the travel time without traffic, read through the official TomTom Routing API. Create a free account on my.tomtom.com: its \"My first API key\" works (2,500 requests a day, shared by every use of the key). Each trip costs one request per read: 10 minutes by default, 5 at least. Never tested with a real TomTom key yet.",
+        "fr": "Connecteur non officiel, sans lien avec TomTom. Pour chaque trajet saisi, un appareil donne la durée avec le trafic en temps réel, le retard dû au trafic, la distance et la durée sans trafic, lus par l'API officielle TomTom Routing. Créez un compte gratuit sur my.tomtom.com : sa clé « My first API key » convient (2 500 requêtes par jour, partagées par tous les usages de la clé). Chaque trajet coûte une requête par relevé : toutes les 10 minutes par défaut, 5 au minimum. Jamais testé avec une vraie clé TomTom pour l'instant."
       },
       "links": [
         {
-          "url": "https://developer.tomtom.com/user/register",
+          "url": "https://my.tomtom.com/",
           "label": {
-            "en": "Create a TomTom developer account",
-            "fr": "Créer un compte développeur TomTom"
+            "en": "Create a TomTom account",
+            "fr": "Créer un compte TomTom"
+          }
+        },
+        {
+          "url": "https://my.tomtom.com/keys",
+          "label": {
+            "en": "Your TomTom API keys",
+            "fr": "Vos clés d'API TomTom"
           }
         },
         {
           "url": "https://github.com/LM1LC3N7/gladys-tomtom-travel-time/blob/main/docs/fr.md",
-          "label": { "en": "Guide (French)", "fr": "Guide (français)" }
+          "label": {
+            "en": "Guide (French)",
+            "fr": "Guide (français)"
+          }
         },
         {
           "url": "https://github.com/LM1LC3N7/gladys-tomtom-travel-time/blob/main/docs/en.md",
-          "label": { "en": "Guide (English)", "fr": "Guide (anglais)" }
+          "label": {
+            "en": "Guide (English)",
+            "fr": "Guide (anglais)"
+          }
         }
       ]
     },
     {
       "key": "api_key",
       "type": "secret",
-      "label": { "en": "TomTom API key", "fr": "Clé d'API TomTom" },
+      "label": {
+        "en": "TomTom API key",
+        "fr": "Clé d'API TomTom"
+      },
       "description": {
         "en": "Kept by Gladys in its database, never shown again, sent only to api.tomtom.com.",
         "fr": "Gardée par Gladys dans sa base, jamais réaffichée, envoyée seulement à api.tomtom.com."
@@ -52,7 +71,10 @@
     {
       "key": "trips",
       "type": "string",
-      "label": { "en": "Trips", "fr": "Trajets" },
+      "label": {
+        "en": "Trips",
+        "fr": "Trajets"
+      },
       "description": {
         "en": "One trip per entry, separated by \";\": a name, the origin and the destination as \"latitude,longitude\" (decimal point), separated by \"|\". Twenty trips at most. A device keeps its name: renaming a trip creates a new device.",
         "fr": "Un trajet par entrée, séparés par « ; » : un nom, l'origine et la destination en « latitude,longitude » (point décimal), séparés par « | ». Vingt trajets au maximum. Un appareil garde son nom : renommer un trajet crée un nouvel appareil."
@@ -83,7 +105,10 @@
     {
       "key": "travel_mode",
       "type": "select",
-      "label": { "en": "Vehicle", "fr": "Véhicule" },
+      "label": {
+        "en": "Vehicle",
+        "fr": "Véhicule"
+      },
       "description": {
         "en": "Truck: the roads and speeds of a truck, without its dimensions or weight.",
         "fr": "Camion : les routes et vitesses d'un camion, sans ses dimensions ni son poids."
@@ -91,28 +116,49 @@
       "required": false,
       "default": "car",
       "options": [
-        { "value": "car", "label": { "en": "Car", "fr": "Voiture" } },
-        { "value": "truck", "label": { "en": "Truck", "fr": "Camion" } }
+        {
+          "value": "car",
+          "label": {
+            "en": "Car",
+            "fr": "Voiture"
+          }
+        },
+        {
+          "value": "truck",
+          "label": {
+            "en": "Truck",
+            "fr": "Camion"
+          }
+        }
       ]
     },
     {
       "key": "avoid_tolls",
       "type": "boolean",
-      "label": { "en": "Avoid toll roads", "fr": "Éviter les péages" },
+      "label": {
+        "en": "Avoid toll roads",
+        "fr": "Éviter les péages"
+      },
       "required": false,
       "default": false
     },
     {
       "key": "avoid_motorways",
       "type": "boolean",
-      "label": { "en": "Avoid motorways", "fr": "Éviter les autoroutes" },
+      "label": {
+        "en": "Avoid motorways",
+        "fr": "Éviter les autoroutes"
+      },
       "required": false,
       "default": false
     },
     {
       "key": "window_section",
       "type": "section",
-      "label": { "en": "Reading window (optional)", "fr": "Plage de relevé (facultatif)" },
+      "label": {
+        "en": "Reading window (optional)",
+        "fr": "Plage de relevé (facultatif)"
+      },
       "description": {
         "en": "To save the quota, read the trips only between two hours, e.g. 6 to 20. 0 to 24 reads all day long; a window may cross midnight (22 to 6). The departure is always now.",
         "fr": "Pour économiser le quota, ne relever les trajets qu'entre deux heures, par exemple de 6 à 20. De 0 à 24 relève toute la journée ; une plage peut passer minuit (de 22 à 6). Le départ est toujours maintenant."
@@ -121,7 +167,10 @@
     {
       "key": "active_from",
       "type": "number",
-      "label": { "en": "From (hour)", "fr": "De (heure)" },
+      "label": {
+        "en": "From (hour)",
+        "fr": "De (heure)"
+      },
       "required": false,
       "default": 0,
       "min": 0,
@@ -130,7 +179,10 @@
     {
       "key": "active_until",
       "type": "number",
-      "label": { "en": "Until (hour)", "fr": "Jusqu'à (heure)" },
+      "label": {
+        "en": "Until (hour)",
+        "fr": "Jusqu'à (heure)"
+      },
       "required": false,
       "default": 24,
       "min": 1,
@@ -139,12 +191,18 @@
     {
       "key": "timezone",
       "type": "string",
-      "label": { "en": "Time zone of the window", "fr": "Fuseau horaire de la plage" },
+      "label": {
+        "en": "Time zone of the window",
+        "fr": "Fuseau horaire de la plage"
+      },
       "description": {
         "en": "The time zone of your Gladys (Settings → System). IANA name, e.g. Europe/Brussels.",
         "fr": "Le fuseau de votre Gladys (Paramètres → Système). Nom IANA, ex. Europe/Brussels."
       },
-      "placeholder": { "en": "Europe/Paris", "fr": "Europe/Paris" },
+      "placeholder": {
+        "en": "Europe/Paris",
+        "fr": "Europe/Paris"
+      },
       "required": false,
       "default": "Europe/Paris"
     }
@@ -153,10 +211,13 @@
     {
       "key": "test_connection",
       "timeout_seconds": 120,
-      "label": { "en": "Test TomTom", "fr": "Tester TomTom" },
+      "label": {
+        "en": "Test TomTom",
+        "fr": "Tester TomTom"
+      },
       "description": {
-        "en": "Reads the first trip (one request, at most once every 2 minutes), and shows the planned requests and the last values of every trip.",
-        "fr": "Relève le premier trajet (une requête, au plus une fois toutes les 2 minutes), et affiche les requêtes prévues et les dernières valeurs de chaque trajet."
+        "en": "Reads the first trip (one manual request, at most once every 2 minutes), and shows the planned and used requests and the last values of every trip.",
+        "fr": "Relève le premier trajet (une requête manuelle, au plus une fois toutes les 2 minutes), et affiche les requêtes prévues et utilisées et les dernières valeurs de chaque trajet."
       }
     }
   ],
@@ -168,8 +229,8 @@
         "fr": "Rafraîchir un trajet TomTom maintenant"
       },
       "description": {
-        "en": "One request now, unless the trip was read less than 2 minutes ago: then its last values.",
-        "fr": "Une requête maintenant, sauf si le trajet a été relevé il y a moins de 2 minutes : ses dernières valeurs alors."
+        "en": "One request now, unless the trip was read less than 2 minutes ago or the manual reads of the day (100 at most) are spent: then its last values.",
+        "fr": "Une requête maintenant, sauf si le trajet a été relevé il y a moins de 2 minutes ou si les relevés manuels du jour (100 au plus) sont épuisés : ses dernières valeurs alors."
       },
       "timeout_seconds": 60,
       "fields": [
@@ -177,7 +238,10 @@
           "key": "trip",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Trip", "fr": "Trajet" },
+          "label": {
+            "en": "Trip",
+            "fr": "Trajet"
+          },
           "required": true
         }
       ],
@@ -185,27 +249,50 @@
         {
           "key": "refreshed",
           "type": "boolean",
-          "label": { "en": "Read now", "fr": "Relevé maintenant" }
+          "label": {
+            "en": "Read now",
+            "fr": "Relevé maintenant"
+          }
         },
         {
           "key": "travel_time_minutes",
           "type": "number",
-          "label": { "en": "Travel time with traffic (min)", "fr": "Durée avec trafic (min)" }
+          "label": {
+            "en": "Travel time with traffic (min)",
+            "fr": "Durée avec trafic (min)"
+          }
         },
         {
           "key": "traffic_delay_minutes",
           "type": "number",
-          "label": { "en": "Traffic delay (min)", "fr": "Retard dû au trafic (min)" }
+          "label": {
+            "en": "Traffic delay (min)",
+            "fr": "Retard dû au trafic (min)"
+          }
         },
         {
           "key": "distance_km",
           "type": "number",
-          "label": { "en": "Distance (km)", "fr": "Distance (km)" }
+          "label": {
+            "en": "Distance (km)",
+            "fr": "Distance (km)"
+          }
         },
         {
           "key": "no_traffic_time_minutes",
           "type": "number",
-          "label": { "en": "Travel time without traffic (min)", "fr": "Durée sans trafic (min)" }
+          "label": {
+            "en": "Travel time without traffic (min)",
+            "fr": "Durée sans trafic (min)"
+          }
+        },
+        {
+          "key": "age_minutes",
+          "type": "number",
+          "label": {
+            "en": "Age of the values (min)",
+            "fr": "Ancienneté des valeurs (min)"
+          }
         }
       ]
     }

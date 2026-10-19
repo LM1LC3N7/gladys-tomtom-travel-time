@@ -8,7 +8,7 @@ const plural = (n, one, many) => (n === 1 ? one : many);
 
 /** 2500 -> "2,500" / "2 500". */
 export const count = (n, lang) =>
-  String(n).replace(/\B(?=(\d{3})+(?!\d))/g, lang === 'fr' ? ' ' : ',');
+  String(n).replace(/\B(?=(\d{3})+(?!\d))/g, lang === 'fr' ? '\u202f' : ',');
 
 /** "2026-10-18T18:00:00Z" -> "18:00 UTC". */
 export const utcTime = (ms) => `${new Date(ms).toISOString().slice(11, 16)} UTC`;
@@ -54,8 +54,8 @@ export const T = {
       `Configuration refusée : elle prévoit ${count(planned, 'fr')} requêtes par jour (trajets × relevés par jour), plus que les ${count(DAILY_LIMIT, 'fr')} de l'offre gratuite. Augmentez l'intervalle, réduisez la plage horaire ou retirez des trajets. Rien n'est lu en attendant.`,
     ),
   keyRefused: both(
-    'TomTom refused the API key (wrong, inactive or without access to the Routing API): the reads stop. Check the key on developer.tomtom.com; one new try every 6 hours until the key changes.',
-    "TomTom a refusé la clé d'API (erronée, inactive ou sans accès à la Routing API) : les relevés s'arrêtent. Vérifiez la clé sur developer.tomtom.com ; un nouvel essai toutes les 6 heures jusqu'à ce que la clé change.",
+    'TomTom refused the API key (wrong, inactive or without access to the Routing API): the reads stop. Check the key on my.tomtom.com/keys; one new try every 6 hours until the key changes.',
+    "TomTom a refusé la clé d'API (erronée, inactive ou sans accès à la Routing API) : les relevés s'arrêtent. Vérifiez la clé sur my.tomtom.com/keys ; un nouvel essai toutes les 6 heures jusqu'à ce que la clé change.",
   ),
   quotaReached: (until) =>
     both(
@@ -78,10 +78,10 @@ export const T = {
     if (names.length > 0) {
       const list = names.slice(0, 5).join(', ');
       en.push(
-        `${names.length} ${plural(names.length, 'trip', 'trips')} ignored (expected "Name | lat,lon | lat,lon", names unique): ${list}`,
+        `${names.length} ${plural(names.length, 'trip', 'trips')} ignored (expected "Name | lat,lon | lat,lon", unique names with a Latin letter or a digit): ${list}`,
       );
       fr.push(
-        `${names.length} ${plural(names.length, 'trajet ignoré', 'trajets ignorés')} (format attendu « Nom | lat,lon | lat,lon », noms uniques) : ${list}`,
+        `${names.length} ${plural(names.length, 'trajet ignoré', 'trajets ignorés')} (format attendu « Nom | lat,lon | lat,lon », noms uniques avec une lettre latine ou un chiffre) : ${list}`,
       );
     }
     if (dropped > 0) {
@@ -92,6 +92,10 @@ export const T = {
     }
     return both(en.join('. '), fr.join('. '));
   },
+  notWritable: both(
+    'The /data folder cannot be written: the count of the day and the pauses are kept in memory only, and the first reads wait one whole interval after each start',
+    "Le dossier /data n'est pas inscriptible : le compte du jour et les pauses ne sont gardés qu'en mémoire, et les premiers relevés attendent un intervalle entier après chaque démarrage",
+  ),
   invalidTimezone: (zone) =>
     both(
       `Unknown time zone: ${zone} used instead`,

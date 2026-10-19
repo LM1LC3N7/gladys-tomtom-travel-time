@@ -28,9 +28,11 @@ import { Store, nextUtcMidnight } from './store.js';
 
 /**
  * kind: refused (the key), quota (403: the daily quota of the key), limited
- * (429, or a 403 for the requests per second), budget (the integration's own
- * daily count is spent), no_route (no route between the points), bad_request
- * (TomTom refused the request), failed (network, 5xx, anything else).
+ * (429, or a 403 that is neither the quota nor a known key message), budget
+ * (the integration's own daily count is spent), no_route (no route between
+ * the points), bad_request (TomTom refused the request), failed (network,
+ * 5xx, anything else). Never sent: too_soon (the trip was read moments ago),
+ * manual_budget (the manual reads of the day are spent).
  * `detail` is a known TomTom code or a fixed text: safe to show and log.
  */
 export class TomTomError extends Error {
@@ -75,7 +77,11 @@ export function checkAnswer({ status, text, retryAfterMs }) {
   const body = parseJson(text);
   if (status >= 200 && status < 300) {
     const summary = body?.routes?.[0]?.summary;
-    return summary && typeof summary === 'object' && !Array.isArray(summary)
+    // Without a travel time, the answer is useless: never published as a value.
+    return summary &&
+      typeof summary === 'object' &&
+      !Array.isArray(summary) &&
+      readingOf(summary).travelTime !== null
       ? summary
       : new TomTomError('failed', 'unexpected answer');
   }
@@ -97,7 +103,12 @@ export function checkAnswer({ status, text, retryAfterMs }) {
     if (/over\s*(the\s*)?(rate|limit|quota)|quota|limit exceeded|rate limit|exceeded/.test(lower)) {
       return new TomTomError('quota', 'http 403, quota', { retryAfterMs });
     }
-    return new TomTomError('refused', 'http 403');
+    if (/inactive|not authori[sz]ed|forbidden|invalid key|developer/.test(lower)) {
+      return new TomTomError('refused', 'http 403');
+    }
+    // An unknown 403 (a proxy, a CDN...) is not proof of a bad key: a
+    // pause that doubles, like a 429.
+    return new TomTomError('limited', 'http 403', { retryAfterMs });
   }
   const code = codeOf(body);
   if (status === 400) {
@@ -179,6 +190,8 @@ export class TomTomClient {
     this.currentKeyHash = undefined;
     this.keyError = undefined;
     this.clearKeyState();
+    // A first save tells whether /data is writable.
+    this.store.save();
   }
 
   get keyState() {
@@ -245,8 +258,17 @@ export class TomTomClient {
     return undefined;
   }
 
-  /** Read a trip now (in the queue of the pacer). Resolves its reading. */
-  route(trip, options, { apiKey, manual = false, force = false }) {
+  /**
+   * Read a trip now (in the queue of the pacer). Resolves its reading.
+   * `minGap`: no request if the trip had one less than this ago (checked
+   * when the turn comes, so concurrent callers never stack requests).
+   * `manualLimit`: the manual requests allowed per UTC day.
+   */
+  route(
+    trip,
+    options,
+    { apiKey, manual = false, force = false, minGap = 0, manualLimit = Infinity },
+  ) {
     if (this.currentKeyHash === undefined) {
       this.useKey(apiKey);
     }
@@ -257,8 +279,16 @@ export class TomTomClient {
       if (epoch !== this.keyEpoch || keyHash(apiKey) !== this.currentKeyHash) {
         throw stale();
       }
-      // Checked when the turn comes, not when queued: a 429 met by the
-      // previous call stops this one before the network.
+      // Checked when the turn comes, not when queued: a request of the same
+      // trip just made by a concurrent caller (a tick, a scene, the test
+      // button, a configuration saved meanwhile) holds this one back.
+      if (minGap > 0 && this.now() - this.store.trip(trip.id).lastAttemptAt < minGap) {
+        throw new TomTomError('too_soon', 'read moments ago');
+      }
+      if (manual && this.store.manualUsed() >= manualLimit) {
+        throw new TomTomError('manual_budget', 'manual reads of the day spent');
+      }
+      // A 429 met by the previous call stops this one before the network.
       const blocked = this.blocked({ force });
       if (blocked) {
         throw blocked;

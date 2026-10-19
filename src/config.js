@@ -42,13 +42,21 @@ const flag = (value, fallback) =>
 const clean = (value) =>
   (typeof value === 'string' || typeof value === 'number' ? String(value) : '').trim();
 
-/** Printable characters only, trimmed and cut. */
+/**
+ * Printable characters only (no control, no format character such as a
+ * bidirectional override, no line or paragraph separator), trimmed and cut.
+ */
 export const printable = (value, max) =>
-  [...clean(value)]
-    .filter((c) => c.charCodeAt(0) >= 0x20 && c.charCodeAt(0) !== 0x7f)
-    .join('')
+  clean(value)
+    .replace(/[\p{Cc}\p{Cf}\u2028\u2029]/gu, '')
     .trim()
     .slice(0, max);
+
+/** "1.5,2.5" sequences masked: an invalid entry is named without its coordinates. */
+const maskNumbers = (text) =>
+  text
+    .replace(/-?\d+(?:[.,]\d+)?(?:\s*[,;]\s*-?\d+(?:[.,]\d+)?)+/g, '\u2026')
+    .replace(/-?\d+[.,]\d+/g, '\u2026');
 
 /** "Saint-Étienne" -> "saint-etienne": a stable id piece, ASCII only. */
 export function slug(text) {
@@ -95,29 +103,38 @@ export function parseTrips(text) {
   const invalid = [];
   let dropped = 0;
   const seen = new Set();
-  for (const entry of clean(text).split(/[;\n\r]+/)) {
+  let position = 0;
+  for (const entry of clean(text).split(/[;\n\r\u2028\u2029]+/)) {
     const value = entry.trim();
     if (!value) {
       continue;
     }
+    position += 1;
     const parts = value.split('|').map((p) => p.trim());
     const name = printable(parts[0], 60);
     const id = slug(name);
     const origin = parsePoint(parts[1]);
     const destination = parsePoint(parts[2]);
+    // Only a name is shown back, never the coordinates of a home: numbers are
+    // masked, and an entry without a usable name is shown by its position.
+    const shown = () => {
+      const masked = maskNumbers(name).trim();
+      return slug(masked) ? masked : `#${position}`;
+    };
     if (
       parts.length !== 3 ||
       !id ||
+      // A name forgotten: the first part is a point.
+      parsePoint(name) !== undefined ||
       !origin ||
       !destination ||
       (origin.lat === destination.lat && origin.lon === destination.lon)
     ) {
-      // Only the name is shown back (never the coordinates of a home).
-      invalid.push(name || '?');
+      invalid.push(shown());
       continue;
     }
     if (seen.has(id)) {
-      invalid.push(name);
+      invalid.push(shown());
       continue;
     }
     if (trips.length >= MAX_TRIPS) {

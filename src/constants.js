@@ -45,6 +45,12 @@ export const TICK = 60_000;
  */
 export const MANUAL_MIN_GAP = 2 * 60_000;
 
+/**
+ * At most this many manual reads (scenes, test button) per UTC day, and never
+ * more than what the planned reads leave of the daily quota.
+ */
+export const MANUAL_DAILY_MAX = 100;
+
 /** A 429 (or a 403 for the requests per second): between 1 minute and 6 hours. */
 export const LIMITED_MIN = 60_000;
 export const LIMITED_MAX = 6 * 60 * 60_000;

@@ -17,7 +17,7 @@
       error format): "Developer Inactive", "Not Authorized" (refused key),
       "Developer Over Rate" / "Over the limit" (daily quota), "Developer Over
       Qps" (requests per second) are the expected texts, matched without case.
-      A bare 403 counts as a refused key (6-hour retry).
+      A 403 without a known message is a doubling pause, not a refusal.
 - [ ] When TomTom resets the daily quota (UTC midnight assumed: the count of
       the integration and the 403 pause follow the UTC day).
 - [ ] Whether TomTom sends `Retry-After` on a 429 (used when it does).
@@ -105,6 +105,34 @@ https://api.tomtom.com/routing/1/calculateRoute/<lat,lon>:<lat,lon>/json`,
 - **Demo files of the template removed** (`src/devices/`, `src/scenes.js`,
   `src/widgets.js`, `src/weather.js` and their tests).
 - **LICENSE**: Apache-2.0 text without any name.
+
+## Decisions of the review (Milestone 1 fixes)
+
+- **Gaps checked in the turn of the pacer** (`route({ minGap })`): the
+  interval for a periodic read, 2 minutes for a manual one, against the
+  persisted instant of the last request of the trip. Concurrent callers (a
+  tick, scenes, the test button, a configuration saved during a tick) never
+  stack requests: the late ones get the last values (`refreshed: false`).
+- **Manual budget per UTC day**: `min(100, 2,500 − planned)` manual reads
+  (scenes and test button), persisted in `/data`; beyond it, the last values
+  without a request. The periodic reads are not held by it.
+- **A new key no longer shortens the wait**: the periodic reads keep the
+  interval; the test button can check the new key after the 2-minute gap.
+- **403**: refused only on a known key message (inactive, not authorized,
+  forbidden, invalid key, developer); quota and "Qps" as before; any other
+  403 is a pause that doubles (like a 429).
+- **A 200 without a travel time** is a failure ("unexpected answer"), never
+  published.
+- **Names**: control, format (`\p{Cf}`, bidi overrides, zero-width) and
+  line/paragraph separators removed; a name needs a Latin letter or a digit
+  and must not be coordinates; an invalid entry is shown with its numbers
+  masked, or as `#<position>`.
+- **`/data` not writable**: a note in the status, and the first reads wait a
+  whole interval after each start of the process.
+- **Scene output `age_minutes`** (age of the values returned).
+- **Key creation**: my.tomtom.com and my.tomtom.com/keys ("My first API key");
+  the docs say the 2,500 are shared by every use of the key and that "Pay As
+  You Grow" may bill beyond them.
 
 ## Ideas
 

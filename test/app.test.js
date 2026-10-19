@@ -225,6 +225,7 @@ test('the scene action: a request now, never twice within 2 minutes', async () =
   assert.equal(ack.success, true);
   assert.deepEqual(ack.data.outputs, {
     refreshed: false,
+    age_minutes: 0,
     travel_time_minutes: 29,
     traffic_delay_minutes: 5.2,
     distance_km: 18.2,
@@ -237,6 +238,56 @@ test('the scene action: a request now, never twice within 2 minutes', async () =
   assert.equal(requests().length, 2);
   ack = await gladys.fake.sceneAction(SCENE_ACTIONS.REFRESH, { trip: 'ext:tomtom:trip:nope' });
   assert.equal(ack.success, false);
+});
+
+test('a tick, five scenes and the test button at once: one request', async () => {
+  const { app, gladys, clock } = await setup();
+  clock.now += 10 * 60_000;
+  await Promise.all([
+    app.tick(),
+    ...Array.from({ length: 5 }, () =>
+      gladys.fake.sceneAction(SCENE_ACTIONS.REFRESH, { trip: DEVICE }),
+    ),
+    gladys.fake.action(ACTIONS.TEST),
+  ]);
+  assert.equal(requests().length, 2, 'the setup read, then one request');
+});
+
+test('a configuration saved during a tick never reads a trip twice', async () => {
+  const { app, clock } = await setup();
+  clock.now += 10 * 60_000;
+  await Promise.all([app.tick(), app.start({ api_key: KEY, trips: WORK })]);
+  assert.equal(requests().length, 2);
+});
+
+test('a looping scene stops at the manual reads of the day, the periodic reads go on', async () => {
+  // 17 trips every 10 minutes: 2,448 planned, 52 manual reads left.
+  const trips = [WORK, ...Array.from({ length: 16 }, (_, i) => `T${i} | 1,1 | 2,2`)].join(';');
+  const { app, gladys, timers, clock } = await setup({ config: { api_key: KEY, trips } });
+  assert.equal(app.manualLimit, 52);
+  let refreshed = 0;
+  for (let i = 0; i < 80; i += 1) {
+    clock.now += MANUAL_MIN_GAP;
+    const ack = await gladys.fake.sceneAction(SCENE_ACTIONS.REFRESH, { trip: DEVICE });
+    refreshed += ack.data.outputs.refreshed ? 1 : 0;
+    assert.equal(typeof ack.data.outputs.travel_time_minutes, 'number');
+  }
+  assert.equal(refreshed, 52);
+  const before = requests().length;
+  await runMinutes(timers, clock, 10);
+  assert.ok(requests().length > before, 'the periodic reads still go');
+});
+
+test('a /data that cannot be written: a warning, and the first read waits an interval', async () => {
+  const { gladys, timers, clock } = await setup({
+    storage: { load: () => undefined, save: () => false },
+  });
+  assert.equal(requests().length, 0);
+  assert.match(gladys.fake.connectionStatus.message.en, /\/data folder cannot be written/);
+  await runMinutes(timers, clock, 9);
+  assert.equal(requests().length, 0);
+  await runMinutes(timers, clock, 1);
+  assert.equal(requests().length, 1);
 });
 
 test('a manual refresh pushes the next periodic read by a whole interval', async () => {

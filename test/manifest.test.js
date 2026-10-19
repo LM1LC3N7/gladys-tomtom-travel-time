@@ -57,8 +57,8 @@ test('no mojibake and no BOM in the manifest, the docs and the sources', () => {
       `${file} starts with a BOM`,
     );
     const text = buffer.toString('utf8');
-    assert.ok(!text.includes('�'), `${file} holds an invalid UTF-8 sequence`);
-    for (const bad of ['Ã', 'Â', 'â€']) {
+    assert.ok(!text.includes('\ufffd'), `${file} holds an invalid UTF-8 sequence`);
+    for (const bad of ['\u00c3', '\u00c2', '\u00e2\u20ac']) {
       assert.ok(!text.includes(bad), `${file} holds mojibake (${bad})`);
     }
     assert.doesNotMatch(text, /[\u0300-\u036f]/, `${file} holds a bare combining mark`);
@@ -77,7 +77,9 @@ test('the store basics', () => {
     assert.ok(length >= 10 && length <= 100, `description.${lang}: ${length} characters`);
     const docs = read(`docs/${lang}.md`);
     assert.ok(docs.length >= 300, `docs/${lang}.md is too short for the store`);
-    assert.match(docs, /developer\.tomtom\.com/, `docs/${lang}.md explains the free key`);
+    assert.match(docs, /my\.tomtom\.com\/keys/, `docs/${lang}.md explains the free key`);
+    assert.match(docs, /My first API key/);
+    assert.match(docs, /Pay As You Grow/, `docs/${lang}.md warns about the shared quota`);
     assert.match(docs, /Mapbox Traffic/, `docs/${lang}.md points to Mapbox Traffic`);
     assert.match(docs, /qleg/);
     assert.match(docs, /11024/);
@@ -140,10 +142,11 @@ test('the configuration matches the code', () => {
   assert.equal(fields.api_key.type, 'secret');
   // Never "encrypted": Gladys keeps a secret in clear in its database.
   for (const file of ['docs/en.md', 'docs/fr.md', 'README.md']) {
-    assert.doesNotMatch(read(file), /encrypt|chiffr/i, file);
+    // "chiffre" (a digit) is fine; "chiffré", "chiffrée", "chiffrement" are not.
+    assert.doesNotMatch(read(file), /encrypt|chiffré|chiffrement/i, file);
   }
   for (const [, text] of texts(manifest)) {
-    assert.doesNotMatch(`${text.en} ${text.fr}`, /encrypt|chiffr/i);
+    assert.doesNotMatch(`${text.en} ${text.fr}`, /encrypt|chiffré|chiffrement/i);
   }
   assert.match(fields.api_key.description.en, /sent only to api\.tomtom\.com/);
   assert.match(fields.api_key.description.fr, /envoyée seulement à api\.tomtom\.com/);
@@ -177,6 +180,7 @@ test('the keys of the manifest are the keys of the code', () => {
       'traffic_delay_minutes',
       'distance_km',
       'no_traffic_time_minutes',
+      'age_minutes',
     ],
   );
   assert.equal(manifest.scene_triggers, undefined);

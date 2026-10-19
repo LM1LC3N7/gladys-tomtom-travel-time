@@ -53,7 +53,24 @@ test('invalid trips are reported by name only, duplicates refused', () => {
     `${WORK}; Work | 1,1 | 2,2; Broken | 48.8,2.3; Same | 1,1 | 1,1; | 1,1 | 2,2`,
   );
   assert.equal(trips.length, 1);
-  assert.deepEqual(invalid, ['Work', 'Broken', 'Same', '?']);
+  assert.deepEqual(invalid, ['Work', 'Broken', 'Same', '#5']);
+});
+
+test('an invalid entry never shows coordinates; a name needs a Latin letter or a digit', () => {
+  const { trips, invalid } = parseTrips(
+    [
+      '48.85661,2.35222 | 48.89198,2.23881', // the name forgotten
+      '48.85661,2.35222 | 1,1 | 2,2', // coordinates as the name
+      'Home 48.123456, 2.654321 | 1,1',
+      '\u6771\u4eac | 1,1 | 2,2', // no Latin letter nor digit
+      'Gare\u202e\u200b | 1,1 | 2,2', // a bidi override and a zero-width space
+    ].join(';'),
+  );
+  assert.deepEqual(invalid, ['#1', '#2', 'Home \u2026', '#4']);
+  assert.deepEqual(
+    trips.map((t) => t.name),
+    ['Gare'],
+  );
 });
 
 test('twenty trips at most', () => {
