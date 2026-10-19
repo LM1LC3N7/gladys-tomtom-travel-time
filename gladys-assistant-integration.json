@@ -6,8 +6,8 @@
     "en": "Unofficial connector: trip duration and traffic delay from the TomTom Routing API.",
     "fr": "Connecteur non officiel : durée de trajet et retard dû au trafic par l'API TomTom Routing."
   },
-  "version": "0.1.0",
-  "docker_image": "ghcr.io/lm1lc3n7/gladys-tomtom-travel-time:0.1.0",
+  "version": "0.1.1",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-tomtom-travel-time:0.1.1",
   "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-tomtom-travel-time/main/cover.png",
   "categories": ["services"],

@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-19
+
 ### Added
 
 - The travel time of your trips in Gladys, through the official TomTom
@@ -37,4 +39,5 @@ the notes of the version's GitHub Release.
 - "Test TomTom" button: one request, the planned and used requests, the last
   values of every trip.
 
-[Unreleased]: https://github.com/LM1LC3N7/gladys-tomtom-travel-time/commits/main
+[Unreleased]: https://github.com/LM1LC3N7/gladys-tomtom-travel-time/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-tomtom-travel-time/releases/tag/v0.1.1

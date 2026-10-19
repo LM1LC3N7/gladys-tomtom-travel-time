@@ -1,6 +1,6 @@
 {
   "name": "gladys-tomtom-travel-time",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "TomTom travel time for Gladys Assistant: the duration of your trips with live traffic, the traffic delay and the distance, through the official TomTom Routing API and a free key.",
   "type": "module",
