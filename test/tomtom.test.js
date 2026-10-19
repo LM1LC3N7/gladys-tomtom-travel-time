@@ -318,6 +318,44 @@ test('the manual reads of the day are capped, the count persisted', async () => 
   assert.equal(again.c.store.manualUsed(), 0);
 });
 
+test('a start that dies before useKey() never erases a persisted pause', async () => {
+  fake = installFetch([[ROUTE, () => xml('Developer Inactive')]]);
+  const storage = memoryStorage();
+  const first = client({ storage });
+  await assert.rejects(first.c.route(TRIP, CAR, { apiKey: KEY }), { kind: 'refused' });
+  const pausedUntil = first.c.keyPausedUntil;
+  // A second process starts, probes /data, and dies before `connected`.
+  const second = new TomTomClient({ now: () => first.clock.now + 1000, storage });
+  second.store.save();
+  assert.equal(storage.load().key.state, 'refused');
+  assert.equal(storage.load().key.pausedUntil, pausedUntil);
+  // A third one, with the same key, finds the pause again.
+  const third = client({ storage, now: first.clock.now + 2000 });
+  assert.equal(third.c.keyState, 'refused');
+  assert.equal(third.c.keyPausedUntil, pausedUntil);
+  await assert.rejects(third.c.route(TRIP, CAR, { apiKey: KEY }), { kind: 'refused' });
+  assert.equal(fake.calls.length, 1);
+});
+
+test('an unexplained 403 is shown as a refusal by TomTom, not as too many requests', async () => {
+  const { TravelTimeApp } = await import('../src/app.js');
+  const { createFakeGladys } = await import('@gladysassistant/integration-sdk/testing');
+  fake = installFetch([[ROUTE, () => xml('Access denied by the edge')]]);
+  const { c, clock } = client();
+  const gladys = createFakeGladys({ selector: 'tomtom' });
+  const app = new TravelTimeApp({
+    gladys,
+    client: c,
+    now: () => clock.now,
+    logger: { info() {}, warn() {}, error() {}, debug() {} },
+  });
+  app.config = normalizeConfig({ api_key: KEY, trips: 'Work | 1,1 | 2,2' });
+  await assert.rejects(c.route(TRIP, CAR, { apiKey: KEY }), { kind: 'limited' });
+  const issue = app.keyIssue();
+  assert.match(issue.text.en, /refused the requests without saying why/);
+  assert.doesNotMatch(issue.text.en, /slow down/);
+});
+
 test('a state file that cannot be written is reported', () => {
   const store = new Store({
     storage: { load: () => undefined, save: () => false },

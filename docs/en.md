@@ -103,7 +103,9 @@ the reading window ÷ interval)**.
 - Manual reads (scenes and test button) have their own cap per UTC day: 100,
   and never more than what the planned reads leave of the 2,500 (e.g.
   2,500 − 2,448 = 52). Beyond it, the scene action gives back the last values
-  without a request.
+  without a request. A configuration planning exactly 2,500 requests leaves
+  no manual read: the scene action and the test button then only give back
+  the last values.
 - The periodic reads never read a trip faster than its interval, even after
   an error, a reconnection or a restart; a manual read at most every 2
   minutes per trip.

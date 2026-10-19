@@ -142,11 +142,11 @@ test('the configuration matches the code', () => {
   assert.equal(fields.api_key.type, 'secret');
   // Never "encrypted": Gladys keeps a secret in clear in its database.
   for (const file of ['docs/en.md', 'docs/fr.md', 'README.md']) {
-    // "chiffre" (a digit) is fine; "chiffré", "chiffrée", "chiffrement" are not.
-    assert.doesNotMatch(read(file), /encrypt|chiffré|chiffrement/i, file);
+    // "chiffre" (a digit) is fine; "chiffré", "chiffrer", "chiffrement" are not.
+    assert.doesNotMatch(read(file), /encrypt|chiffr(?!es?\b)/i, file);
   }
   for (const [, text] of texts(manifest)) {
-    assert.doesNotMatch(`${text.en} ${text.fr}`, /encrypt|chiffré|chiffrement/i);
+    assert.doesNotMatch(`${text.en} ${text.fr}`, /encrypt|chiffr(?!es?\b)/i);
   }
   assert.match(fields.api_key.description.en, /sent only to api\.tomtom\.com/);
   assert.match(fields.api_key.description.fr, /envoyée seulement à api\.tomtom\.com/);

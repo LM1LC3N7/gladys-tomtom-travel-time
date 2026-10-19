@@ -106,7 +106,9 @@ Chaque relevé d'un trajet coûte une requête. **Requêtes par jour = trajets �
 - Les relevés manuels (scènes et bouton de test) ont leur propre plafond par
   jour UTC : 100, et jamais plus que ce que les relevés prévus laissent des
   2 500 (par exemple 2 500 − 2 448 = 52). Au-delà, l'action de scène rend les
-  dernières valeurs sans requête.
+  dernières valeurs sans requête. Une configuration qui prévoit exactement
+  2 500 requêtes ne laisse aucun relevé manuel : l'action de scène et le
+  bouton de test ne rendent alors que les dernières valeurs.
 - Un trajet n'est jamais relu plus vite que l'intervalle par les relevés
   périodiques, même après une erreur, une reconnexion ou un redémarrage ; un
   relevé manuel au plus toutes les 2 minutes par trajet.
@@ -137,7 +139,7 @@ dernières valeurs sans requête. Plusieurs appels simultanés n'envoient qu'une
 requête. Une scène en boucle consomme donc au plus les relevés manuels du jour,
 jamais les relevés périodiques. Elle fonctionne aussi hors de la plage de
 relevé. Sorties, utilisables par les actions suivantes : `refreshed` (relevé
-maintenant ou non), `age_minutes` (âge des valeurs), `travel_time_minutes`,
+maintenant ou non), `age_minutes` (ancienneté des valeurs), `travel_time_minutes`,
 `traffic_delay_minutes`, `distance_km`, `no_traffic_time_minutes`. Le relevé
 périodique suivant vient un intervalle entier plus tard.
 

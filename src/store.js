@@ -229,7 +229,7 @@ export class Store {
       count: this.count,
       manual: this.manual,
       lastCallAt: this.lastCallAt,
-      key: { ...this.key },
+      key: { ...(this.keyToSave?.() ?? this.key) },
       trips: Object.fromEntries(
         [...this.trips].map(([id, e]) => [
           id,

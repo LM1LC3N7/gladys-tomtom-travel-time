@@ -18,6 +18,7 @@ export const REASONS = {
   refused: { en: 'API key refused', fr: "clé d'API refusée" },
   quota: { en: 'daily quota of the key reached', fr: 'quota du jour de la clé atteint' },
   limited: { en: 'too many requests (429)', fr: 'trop de requêtes (429)' },
+  blocked: { en: 'refused by TomTom (403)', fr: 'refusé par TomTom (403)' },
   budget: { en: 'daily quota spent', fr: 'quota du jour épuisé' },
   no_route: { en: 'no route between the points', fr: 'aucun itinéraire entre les points' },
   bad_request: { en: 'request refused by TomTom', fr: 'requête refusée par TomTom' },
@@ -61,6 +62,11 @@ export const T = {
     both(
       `TomTom says the daily quota of the key is reached: no request before ${utcTime(until)}.`,
       `TomTom indique que le quota du jour de la clé est atteint : aucune requête avant ${utcTime(until)}.`,
+    ),
+  blocked: (until) =>
+    both(
+      `TomTom refused the requests without saying why (403): no request before ${utcTime(until)}, then a pause that doubles if it goes on.`,
+      `TomTom a refusé les requêtes sans dire pourquoi (403) : aucune requête avant ${utcTime(until)}, puis une pause qui double si cela continue.`,
     ),
   rateLimited: (until) =>
     both(

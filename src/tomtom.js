@@ -186,12 +186,18 @@ export class TomTomClient {
     this.pace = createPacer(API_MIN_GAP, { now, sleep, last: this.store.lastCallAt });
     /** The key state read from the file, applied by useKey() if the key matches. */
     this.savedKey = { ...this.store.key };
+    // A first save tells whether /data is writable. It runs before the key
+    // state is cleared in memory, so it writes back the state read from the
+    // file: a pause or a refusal is never erased by a start.
+    this.store.save();
+    // Until useKey() knows the key of the configuration, every save writes
+    // the key state read from the file, never an empty one.
+    this.store.keyToSave = () =>
+      this.currentKeyHash === undefined && this.savedKey ? this.savedKey : this.store.key;
     this.keyEpoch = 0;
     this.currentKeyHash = undefined;
     this.keyError = undefined;
     this.clearKeyState();
-    // A first save tells whether /data is writable.
-    this.store.save();
   }
 
   get keyState() {

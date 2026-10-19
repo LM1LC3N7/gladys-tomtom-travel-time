@@ -129,6 +129,11 @@ https://api.tomtom.com/routing/1/calculateRoute/<lat,lon>:<lat,lon>/json`,
   masked, or as `#<position>`.
 - **`/data` not writable**: a note in the status, and the first reads wait a
   whole interval after each start of the process.
+- **The /data probe never erases a pause** (approval round 1): the first
+  save of the client writes back the key state read from the file, and until
+  `useKey()` every save keeps it; an empty hash is never written.
+- **An unexplained 403** is shown as "refused by TomTom (403)", not "too many
+  requests" (after a restart, the generic pause text).
 - **Scene output `age_minutes`** (age of the values returned).
 - **Key creation**: my.tomtom.com and my.tomtom.com/keys ("My first API key");
   the docs say the 2,500 are shared by every use of the key and that "Pay As

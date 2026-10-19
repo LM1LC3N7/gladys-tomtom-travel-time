@@ -32,6 +32,10 @@ const numberText = (value, lang) => {
   return lang === 'fr' ? text.replace('.', ',') : text;
 };
 
+/** The kind shown: an unexplained 403 is not "too many requests". */
+const kindOf = (err) =>
+  err?.kind === 'limited' && err.detail === 'http 403' ? 'blocked' : err?.kind;
+
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export class TravelTimeApp {
@@ -406,7 +410,13 @@ export class TravelTimeApp {
       return { kind: 'quota', text: T.quotaReached(client.keyPausedUntil) };
     }
     if (paused && client.keyState === 'limited') {
-      return { kind: 'limited', text: T.rateLimited(client.keyPausedUntil) };
+      return {
+        kind: 'limited',
+        text:
+          client.keyError?.detail === 'http 403'
+            ? T.blocked(client.keyPausedUntil)
+            : T.rateLimited(client.keyPausedUntil),
+      };
     }
     if (!client.store.allows()) {
       return { kind: 'budget', text: T.budgetSpent(client.store.resetsAt()) };
@@ -453,7 +463,7 @@ export class TravelTimeApp {
     const failing = config.trips
       .map((trip) => ({ name: trip.name, error: this.track.get(trip.id)?.error }))
       .filter(({ error }) => error && !(issue && KEY_KINDS.includes(error.kind)))
-      .map(({ name, error }) => ({ name, kind: error.kind }));
+      .map(({ name, error }) => ({ name, kind: kindOf(error) }));
     const ok = T.ok({ config, failing });
     const text = issue ? { en: `${issue.text.en} ${ok.en}`, fr: `${issue.text.fr} ${ok.fr}` } : ok;
     const anyValue = config.trips.some((trip) => this.track.get(trip.id)?.reading);
@@ -513,7 +523,7 @@ export class TravelTimeApp {
     const reading = entry?.reading;
     if (!reading) {
       const why = entry?.error
-        ? reason(entry.error.kind)[lang]
+        ? reason(kindOf(entry.error))[lang]
         : lang === 'fr'
           ? 'pas encore lu'
           : 'not read yet';
@@ -539,7 +549,7 @@ export class TravelTimeApp {
     const minutes = Math.max(0, Math.round((this.now() - entry.ts) / 60_000));
     parts.push(fr ? `relevé il y a ${minutes} min` : `read ${minutes} min ago`);
     if (entry.error) {
-      parts.push(`(${reason(entry.error.kind)[lang]})`);
+      parts.push(`(${reason(kindOf(entry.error))[lang]})`);
     }
     return `- ${trip.name}${colon} ${parts.join(', ')}`;
   }
